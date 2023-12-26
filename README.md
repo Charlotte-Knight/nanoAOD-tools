@@ -13,4 +13,4 @@ This repository, together with [EFT2Obs](https://github.com/ajgilbert/EFT2Obs), 
 7. [Plotting reweighted distruibutions (checking fit variables)](READMEs/shape_plots.md)
 8. [Job Submission](READMEs/job_submission.md)
 
-If there are remaining questions or bug finds please contact matthew.knight@cern.ch.
+If there are remaining questions or bug finds please contact charlotte.knight@cern.ch.
