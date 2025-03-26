@@ -1,7 +1,5 @@
 import numpy as np
 
-VERB=False
-
 class Particle:
   def __init__(self, p, pdg_id, status, helicity=None):
     self.p = p
@@ -74,11 +72,11 @@ class Event:
         return False
     return True
 
-  def getReweights(self, rw):
+  def getReweights(self, rw, verb=False):
     parts, pdgs, helicities, status = self.getReweightInfo()
 
     use_helicity = self.useHelicity(helicities)
-    reweights = rw.ComputeWeights(parts, pdgs, helicities, status, self.alphas, use_helicity, VERB)
+    reweights = rw.ComputeWeights(parts, pdgs, helicities, status, self.alphas, use_helicity, verb)
     return reweights
 
   def __str__(self):

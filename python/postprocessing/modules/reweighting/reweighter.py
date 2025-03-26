@@ -9,8 +9,8 @@ import numpy as np
 import warnings
 
 class ReweighterTemplate(Module):
-  def __init__(self, rw_module_path, partsName, verb=False):
-    self.rw_module = standalone_reweight.StandaloneReweight(rw_module_path)
+  def __init__(self, rw_module_path, partsName, verb=False, no_match_behaviour='sm weights'):
+    self.rw_module = standalone_reweight.StandaloneReweight(rw_module_path, no_match_behaviour)
     self.partsName = partsName
     self.verb = verb
 
@@ -90,20 +90,24 @@ class ReweighterTemplate(Module):
     """process event, return True (go to next module) or False (fail, go to next event)"""
     if self.acceptEvent(event):
       rw_event = definitions.Event(0, event.genWeight, self.getParticles(event), self.getAlphas(event))
-      reweights = rw_event.getReweights(self.rw_module)
-      self.out.fillBranch("Reweights", [i * event.genWeight for i in reweights])
+      if self.verb: print(rw_event)
 
-      if self.verb:
-        print(rw_event)
-        print(reweights)
-        print(" ")
-      return True
+      reweights = rw_event.getReweights(self.rw_module, self.verb)
+      if self.verb: print(str(reweights) + "\n")
+
+      if reweights is False:
+        return False
+      else:
+        self.out.fillBranch("Reweights", reweights) #just matrix elements
+        #self.out.fillBranch("Reweights", [i * event.genWeight for i in reweights])
+        return True
+  
     else:
       return False
 
 class LHEReweighter(ReweighterTemplate):
-  def __init__(self, rw_module_path, verb=False):
-    ReweighterTemplate.__init__(self, rw_module_path, "LHEPart", verb)
+  def __init__(self, rw_module_path, verb=False, no_match_behaviour='sm weights'):
+    ReweighterTemplate.__init__(self, rw_module_path, "LHEPart", verb, no_match_behaviour)
   
   def isIncomingParton(self, part, event, index):
     return part.status == -1
@@ -122,8 +126,8 @@ class LHEReweighter(ReweighterTemplate):
       raise Exception("Particle is not a parton, nor is this a 2->1 process. Uncertain how to proceed.")
 
 class GenReweighter(ReweighterTemplate):
-  def __init__(self, rw_module_path, pdgs=None, verb=False):
-    ReweighterTemplate.__init__(self, rw_module_path, "GenPart", verb)
+  def __init__(self, rw_module_path, pdgs=None, verb=False, no_match_behaviour='sm weights'):
+    ReweighterTemplate.__init__(self, rw_module_path, "GenPart", verb, no_match_behaviour)
     self.wanted_pdgs = pdgs
 
   def getStatus(self, part, event, index):
@@ -270,9 +274,29 @@ class ttHReweighter(GenReweighter):
       else:
         return False
 
+class H4LProdReweighter(GenReweighter):
+  def isDaughterOfHiggs(self, part, event, index):
+    """Includes non-direct daughters"""
+    parts = Collection(event, self.partsName)
+    mother_index = part.genPartIdxMother
+    if mother_index >= 0:
+      mother = parts[mother_index]
+      if mother.pdgId == 25:
+        return True
+      else:
+        return self.isDaughterOfHiggs(mother, event, mother_index)
+    else:
+      return False
+
+  def filterPart(self, part, event, index):
+    isHard = (self.isHardProcess(part) or index==2) 
+    isDaughter = self.isDaughterOfHiggs(part, event, index)
+    isIntermediateV = (abs(part.pdgId) == 24) or (part.pdgId == 23)
+    return (isHard and not isDaughter) and not isIntermediateV
+    
+
 """
 # define modules using the syntax 'name = lambda : constructor' to avoid having them loaded when not needed
 LHEReweighterConstr = lambda: LHEReweighter(rw_module_path)
 GenReweighterConstr = lambda: GenReweighter(rw_module_path)
 """
-

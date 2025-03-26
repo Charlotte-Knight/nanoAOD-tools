@@ -8,6 +8,8 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 import warnings
 import PhysicsTools.NanoAODTools.postprocessing.modules.reweighting.reweighter as rw
+import json
+from collections import OrderedDict
 
 def checkKeepDrop(keep_drop_input, keep_drop_output, method):
     check_for = ["keep LHE_AlphaS", "keep genWeight", "keep LHEPart*", "keep GenPart*", "keep Generator*"]
@@ -47,10 +49,39 @@ def checkKeepDrop(keep_drop_input, keep_drop_output, method):
     if not found_Reweights:
         warnings.warn("Looks like the 'Reweights' branch is missing from the outputted branches. Please check your keep_and_drop_output.txt .")
 
+def addJobDetails(options, outdir, input_file, rw_path):
+  try:
+    with open(options.job_json, "r") as f:
+      jobs = json.loads(f.read(), object_pairs_hook=OrderedDict)
+  except:
+    jobs = []
+
+  input_file = os.path.abspath(input_file)
+  if input_file in [job['infile'] for job in jobs]:
+    warnings.warn("This input file already exists as a job.")
+
+  outdir = os.path.abspath(outdir)
+  rw_path = os.path.abspath(rw_path)
+
+  if options.maxEntries == None:
+    options.maxEntries = -1
+
+  new_job = OrderedDict()
+  new_job["infile"] = input_file 
+  new_job["outdir"] = outdir
+  new_job["rw_path"] = rw_path
+  new_job["firstEntry"] = options.firstEntry
+  new_job["maxEntries"] = options.maxEntries
+  new_job["method"] = options.method
+  jobs.append(new_job)
+
+  with open(options.job_json, "w") as f:
+    f.write(json.dumps(jobs, indent=4))
+    
 if __name__ == "__main__":
     from optparse import OptionParser
     parser = OptionParser(usage="%prog [options] outputDir inputFiles rw_path")
-    parser.add_option("-s", "--postfix", dest="postfix", type="string", default=None,
+    parser.add_option("-s", "--postfix", dest="postfix", type="string", default="_reweighted",
                       help="Postfix which will be appended to the file name (default: _Friend for friends, _Skim for skims)")
     parser.add_option("-J", "--json", dest="json", type="string",
                       default=None, help="Select events using this JSON file")
@@ -85,6 +116,8 @@ if __name__ == "__main__":
 
     parser.add_option("-m", "--method", dest="method", type="string", default="LHE")     
     parser.add_option("-v", "--verbose", dest="verb", action="store_true", default=False)
+    parser.add_option("--drop", dest="drop", action="store_true", default=False)
+    parser.add_option("--job-json", dest="job_json", default=None)
 
     (options, args) = parser.parse_args()
 
@@ -100,6 +133,14 @@ if __name__ == "__main__":
     input_files = [args[1]]
     rw_path = args[2]
 
+    if options.job_json is not None:
+      print("Adding details of job to %s. Will not run reweighting."%options.job_json)
+      addJobDetails(options, outdir, input_files[0], rw_path)
+      exit()
+
+    if options.maxEntries == -1:
+      options.maxEntries = None
+
     if options.branchsel != None:
         options.branchsel_in = options.branchsel
         options.branchsel_out = options.branchsel
@@ -107,7 +148,12 @@ if __name__ == "__main__":
     Reweighter = getattr(rw, options.method+"Reweighter")
     checkKeepDrop(options.branchsel_in, options.branchsel_out, options.method)
 
-    modules = [Reweighter(rw_path, verb=options.verb)]
+    if options.drop:
+      no_match_behaviour = 'return False'
+    else:
+      no_match_behaviour = 'sm weights'
+
+    modules = [Reweighter(rw_path, verb=options.verb, no_match_behaviour=no_match_behaviour)]
 
     p = PostProcessor(outdir, input_files,
                       cut=options.cut,
@@ -125,5 +171,4 @@ if __name__ == "__main__":
                       firstEntry=options.firstEntry,
                       outputbranchsel=options.branchsel_out)
     p.run()
-    
     

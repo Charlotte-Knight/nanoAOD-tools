@@ -1,2 +1,6 @@
 # this is a comment
 drop *
+#keep *
+keep genWeight
+keep Reweights
+keep HTXS_stage1_2_cat_pTjet30GeV

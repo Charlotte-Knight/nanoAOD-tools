@@ -77,6 +77,8 @@ There are a number of further options/arguments that could be useful:
 - `-N` specifies the number of entries to run over
 - `-m` specifies the particular reweighting method to use. The default value is `LHE` which tells the script to use the LHEPart branches. To use the default GenPart method, use `-m GEN`. You can design your own methods which is described further [here](making_adjustments.md).
 - `-v` tells the script to run in verbose mode.
+- `--drop` tells the script to remove events which are not compatible with the reweighting module. For example, when an event contains a final state the module was not expecting. By default, in situations like this, the reweighting module will just return the SM weight for all reweights.
+  
 There are more (probably less useful) options that are inherited (and can be found) from [scripts/nano_postproc.py](../scripts/nano_postproc.py).
 
 Before following these next instructions make sure to have a grid proxy: 

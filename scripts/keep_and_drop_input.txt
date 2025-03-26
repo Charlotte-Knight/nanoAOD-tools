@@ -1,5 +1,9 @@
 # this is a comment
 drop *
-keep Muon*
-keep Electron*
-keep Jet*
+#keep *
+keep LHE_AlphaS
+keep genWeight
+keep LHEPart*
+keep GenPart*
+keep Generator*
+keep HTXS_stage1_2_cat_pTjet30GeV
